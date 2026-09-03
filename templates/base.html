@@ -1,0 +1,204 @@
+{% load static %}
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جستجوی لینکدین</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .profile-card {
+            transition: transform 0.2s;
+            height: 100%;
+        }
+        .profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .skill-badge {
+            background: #e9ecef;
+            padding: 2px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            margin: 2px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4"> جستجوی پروفایل‌های لینکدین</h1>
+        
+        <div class="card shadow-sm p-4 mb-4">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <input type="text" id="keywordInput" class="form-control form-control-lg" 
+                           placeholder="جستجوی نام، مهارت، عنوان شغلی، شرکت،...">
+                </div>
+            </div>
+            
+            <div class="row g-3 mt-2">
+                <div class="col-md-3">
+                    <input type="text" id="skillFilter" class="form-control" placeholder=" مهارت">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="jobTitleFilter" class="form-control" placeholder=" عنوان شغلی">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="companyFilter" class="form-control" placeholder=" شرکت">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="locationFilter" class="form-control" placeholder=" مکان">
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button id="searchBtn" class="btn btn-primary w-100"> جستجو</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="resultsInfo" class="text-muted mb-3"></div>
+        
+        <div id="results" class="row">
+            <div class="col-12 text-center text-muted">
+                برای شروع، کلمه کلیدی یا فیلتر وارد کنید...
+            </div>
+        </div>
+        
+        <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let currentPage = 1;
+        const pageSize = 10;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchBtn = document.getElementById('searchBtn');
+            const keywordInput = document.getElementById('keywordInput');
+            
+            searchBtn.addEventListener('click', function() {
+                performSearch(1);
+            });
+            
+            keywordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch(1);
+                }
+            });
+        });
+        
+        function performSearch(page = 1) {
+            currentPage = page;
+            
+            const keyword = document.getElementById('keywordInput').value;
+            const skill = document.getElementById('skillFilter').value;
+            const jobTitle = document.getElementById('jobTitleFilter').value;
+            const company = document.getElementById('companyFilter').value;
+            const location = document.getElementById('locationFilter').value;
+            
+            let url = `/api/search/?page=${page}&page_size=${pageSize}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (skill) url += `&skill=${encodeURIComponent(skill)}`;
+            if (jobTitle) url += `&job_title=${encodeURIComponent(jobTitle)}`;
+            if (company) url += `&company=${encodeURIComponent(company)}`;
+            if (location) url += `&location=${encodeURIComponent(location)}`;
+            
+            console.log('🔍 Sending request:', url);
+            
+            document.getElementById('results').innerHTML = `
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2">در حال جستجو...</p>
+                </div>
+            `;
+            document.getElementById('resultsInfo').innerHTML = '';
+            document.getElementById('pagination').innerHTML = '';
+            
+            fetch(url)
+                .then(response => {
+                    console.log(' Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Data received:', data);
+                    displayResults(data);
+                })
+                .catch(error => {
+                    console.error('❌ Error:', error);
+                    document.getElementById('results').innerHTML = `
+                        <div class="col-12 alert alert-danger">
+                            خطا در ارتباط با سرور: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const infoDiv = document.getElementById('resultsInfo');
+            
+            if (!data.results) {
+                resultsDiv.innerHTML = '<div class="col-12 alert alert-warning">ساختار داده صحیح نیست!</div>';
+                console.error('Invalid data structure:', data);
+                return;
+            }
+            
+            infoDiv.innerHTML = `<span>${data.count} نتیجه یافت شد</span>`;
+            
+            if (data.count === 0) {
+                resultsDiv.innerHTML = '<div class="col-12 text-center text-muted">نتیجه‌ای یافت نشد</div>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            data.results.forEach(profile => {
+                const skills = profile.skills && profile.skills.length > 0 
+                    ? profile.skills.slice(0, 5).map(s => `<span class="skill-badge">${s}</span>`).join(' ')
+                    : '<span class="text-muted">مهارتی ثبت نشده</span>';
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card profile-card">
+                            <div class="card-body">
+                                <h5 class="card-title">${profile.full_name || 'نامشخص'}</h5>
+                                <h6 class="card-subtitle mb-2 text-muted">${profile.job_title || 'عنوان شغلی نامشخص'}</h6>
+                                <p class="card-text small">
+                                    <strong>شرکت:</strong> ${profile.job_company_name || 'نامشخص'}<br>
+                                    <strong>مکان:</strong> ${profile.location || 'نامشخص'}<br>
+                                    <strong>مهارت‌ها:</strong><br>
+                                    ${skills}
+                                </p>
+                                ${profile.linkedin_url ? `<a href="${profile.linkedin_url}" target="_blank" class="btn btn-sm btn-outline-primary">مشاهده پروفایل</a>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+            
+            const totalPages = Math.ceil(data.count / pageSize);
+            if (totalPages > 1) {
+                let paginationHtml = '<ul class="pagination">';
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationHtml += `
+                        <li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="performSearch(${i}); return false;">${i}</a>
+                        </li>
+                    `;
+                }
+                paginationHtml += '</ul>';
+                document.getElementById('pagination').innerHTML = paginationHtml;
+            }
+        }
+    </script>
+</body>
+</html>
