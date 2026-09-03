@@ -11,21 +11,19 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv()
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-for-dev')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=pahr2+-is%f&o5&5!+9v-6t9acrk#$=n4d!y55e4%03p(s1)+'
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -84,10 +82,10 @@ DATABASES = {
 }
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',  # ← باید postgresql باشه
+#         'ENGINE': 'django.db.backends.postgresql',
 #         'NAME': 'linkedin_db',
-#         'USER': 'your_user',
-#         'PASSWORD': 'your_password',
+#         'USER': '',
+#         'PASSWORD': '',
 #         'HOST': 'localhost',
 #         'PORT': '5432',
 #     }
